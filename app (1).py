@@ -207,4 +207,4 @@ with tab4:
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
-st.caption("🚀 Portfolio-Level Dashboard • Built with Streamlit + Plotly")
+st.caption(" Flipkart Sales Analysis • Built By Anchal Pandey")
