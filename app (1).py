@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     layout="wide",
-    page_title="📱 Mobile Analytics Dashboard",
+    page_title="📱 Mobile Analytics Pro",
     page_icon="📊"
 )
 
@@ -22,7 +21,7 @@ body {
 /* Header */
 .header {
     background: linear-gradient(90deg, #1f77b4, #4facfe);
-    padding: 20px;
+    padding: 25px;
     border-radius: 12px;
     color: white;
     margin-bottom: 20px;
@@ -41,19 +40,9 @@ body {
     transform: translateY(-5px);
 }
 
-.kpi-card h4 {
-    color: gray;
-    margin-bottom: 5px;
-}
-
-.kpi-card h2 {
-    color: #1f77b4;
-}
-
 /* Sidebar */
 [data-testid="stSidebar"] {
     background: #0f172a;
-    padding-top: 20px;
 }
 
 [data-testid="stSidebar"] * {
@@ -63,13 +52,6 @@ body {
 /* Section spacing */
 .section {
     margin-top: 30px;
-}
-
-/* Divider */
-hr {
-    border: none;
-    height: 1px;
-    background: #e5e7eb;
 }
 
 </style>
@@ -84,11 +66,8 @@ def load_data():
     df['Storage'] = df['Storage'].fillna(df['Storage'].mode()[0])
     df['Rating'] = df['Rating'].fillna(df['Rating'].mean())
 
-    df['Memory_value'] = df['Memory'].str.extract(r'(\d+)').astype(float)
-    df['Memory_GB'] = df['Memory_value']
-
-    df['Storage_value'] = df['Storage'].str.extract(r'(\d+)').astype(float)
-    df['Storage_GB'] = df['Storage_value']
+    df['Memory_GB'] = df['Memory'].str.extract(r'(\d+)').astype(float)
+    df['Storage_GB'] = df['Storage'].str.extract(r'(\d+)').astype(float)
 
     df['discount'] = df['Original Price'] - df['Selling Price']
     df['Discount_Percentage'] = (df['discount'] / df['Original Price']) * 100
@@ -98,9 +77,7 @@ def load_data():
 df = load_data()
 
 # ---------------- SIDEBAR ----------------
-st.sidebar.markdown("## 📊 Mobile Analytics")
-
-st.sidebar.markdown("### 🔍 Filters")
+st.sidebar.title("📊 Filters")
 
 brand = st.sidebar.selectbox(
     "Brand",
@@ -114,10 +91,7 @@ price_range = st.sidebar.slider(
     (int(df['Selling Price'].min()), int(df['Selling Price'].max()))
 )
 
-rating_filter = st.sidebar.slider(
-    "⭐ Minimum Rating",
-    0.0, 5.0, 0.0
-)
+rating = st.sidebar.slider("⭐ Min Rating", 0.0, 5.0, 0.0)
 
 # Apply filters
 filtered_df = df.copy()
@@ -126,138 +100,111 @@ if brand != "All":
     filtered_df = filtered_df[filtered_df["Brand"] == brand]
 
 filtered_df = filtered_df[
-    (filtered_df["Selling Price"] >= price_range[0]) &
-    (filtered_df["Selling Price"] <= price_range[1]) &
-    (filtered_df["Rating"] >= rating_filter)
+    (filtered_df["Selling Price"].between(price_range[0], price_range[1])) &
+    (filtered_df["Rating"] >= rating)
 ]
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 About")
-st.sidebar.info("""
-Professional mobile analytics dashboard  
-Built using Streamlit  
-
-Includes:
-- Price insights  
-- Brand comparison  
-- Feature analysis  
-""")
 
 # ---------------- HEADER ----------------
 st.markdown("""
 <div class="header">
-    <h2>📱 Mobile Phone Analytics Dashboard</h2>
-    <p>Advanced insights into pricing, performance, and specifications</p>
+    <h2>📱 Mobile Analytics Dashboard</h2>
+    <p>Interactive insights on pricing, brands, and features</p>
 </div>
 """, unsafe_allow_html=True)
 
 # ---------------- KPI CARDS ----------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.markdown(f"""
-<div class="kpi-card">
-    <h4>Total Phones</h4>
-    <h2>{filtered_df.shape[0]}</h2>
-</div>
-""", unsafe_allow_html=True)
+col1.markdown(f"""<div class="kpi-card"><h4>Total Phones</h4><h2>{filtered_df.shape[0]}</h2></div>""", unsafe_allow_html=True)
+col2.markdown(f"""<div class="kpi-card"><h4>Avg Price</h4><h2>₹{filtered_df['Selling Price'].mean():,.0f}</h2></div>""", unsafe_allow_html=True)
+col3.markdown(f"""<div class="kpi-card"><h4>Avg Rating</h4><h2>{filtered_df['Rating'].mean():.2f}</h2></div>""", unsafe_allow_html=True)
+col4.markdown(f"""<div class="kpi-card"><h4>Max Discount</h4><h2>{filtered_df['Discount_Percentage'].max():.1f}%</h2></div>""", unsafe_allow_html=True)
 
-col2.markdown(f"""
-<div class="kpi-card">
-    <h4>Avg Price</h4>
-    <h2>₹{filtered_df['Selling Price'].mean():,.0f}</h2>
-</div>
-""", unsafe_allow_html=True)
+# ---------------- TABS ----------------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊 Overview",
+    "🏷 Brand Analysis",
+    "💾 Specs",
+    "💰 Pricing"
+])
 
-col3.markdown(f"""
-<div class="kpi-card">
-    <h4>Avg Rating</h4>
-    <h2>{filtered_df['Rating'].mean():.2f}</h2>
-</div>
-""", unsafe_allow_html=True)
-
-col4.markdown(f"""
-<div class="kpi-card">
-    <h4>Max Discount</h4>
-    <h2>{filtered_df['Discount_Percentage'].max():.1f}%</h2>
-</div>
-""", unsafe_allow_html=True)
-
-# ---------------- SECTION 1 ----------------
-st.markdown('<div class="section"></div>', unsafe_allow_html=True)
-st.subheader("📊 Brand Analysis")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig, ax = plt.subplots()
-    data = filtered_df.groupby('Brand')['Selling Price'].mean().sort_values()
-    ax.barh(data.index, data.values)
-    ax.set_title("Average Price by Brand")
-    st.pyplot(fig)
-
-with col2:
-    fig, ax = plt.subplots()
-    filtered_df['Brand'].value_counts().plot.pie(autopct='%1.1f%%', ax=ax)
-    ax.set_ylabel("")
-    ax.set_title("Brand Distribution")
-    st.pyplot(fig)
-
-# ---------------- SECTION 2 ----------------
-st.markdown('<div class="section"></div>', unsafe_allow_html=True)
-st.subheader("💾 Specifications Analysis")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig, ax = plt.subplots()
-    sns.scatterplot(
-        x=filtered_df["Memory_GB"],
-        y=filtered_df["Selling Price"],
-        ax=ax
-    )
-    ax.set_title("Price vs RAM")
-    st.pyplot(fig)
-
-with col2:
+# ---------------- TAB 1 ----------------
+with tab1:
+    st.subheader("Top Discounted Phones")
     st.dataframe(
-        filtered_df.sort_values(
-            ["Memory_GB", "Selling Price"],
-            ascending=[False, True]
-        ).head(5),
+        filtered_df.sort_values("Discount_Percentage", ascending=False).head(10),
         use_container_width=True
     )
 
-# ---------------- SECTION 3 ----------------
-st.markdown('<div class="section"></div>', unsafe_allow_html=True)
-st.subheader("💰 Pricing & Discounts")
+# ---------------- TAB 2 ----------------
+with tab2:
+    col1, col2 = st.columns(2)
 
-col1, col2 = st.columns(2)
+    with col1:
+        fig = px.bar(
+            filtered_df.groupby('Brand')['Selling Price'].mean().sort_values().reset_index(),
+            x='Selling Price',
+            y='Brand',
+            orientation='h',
+            title="Average Price by Brand"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-with col1:
-    fig, ax = plt.subplots()
-    sns.scatterplot(
-        x=filtered_df["Selling Price"],
-        y=filtered_df["Discount_Percentage"],
-        ax=ax
-    )
-    ax.set_title("Price vs Discount")
-    st.pyplot(fig)
+    with col2:
+        fig = px.pie(
+            filtered_df,
+            names='Brand',
+            title="Brand Distribution"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-with col2:
-    fig, ax = plt.subplots()
-    sns.histplot(filtered_df["Discount_Percentage"], kde=True, ax=ax)
-    ax.set_title("Discount Distribution")
-    st.pyplot(fig)
+# ---------------- TAB 3 ----------------
+with tab3:
+    col1, col2 = st.columns(2)
 
-# ---------------- SECTION 4 ----------------
-st.markdown('<div class="section"></div>', unsafe_allow_html=True)
-st.subheader("🏆 Top Discounted Phones")
+    with col1:
+        fig = px.scatter(
+            filtered_df,
+            x="Memory_GB",
+            y="Selling Price",
+            color="Brand",
+            title="Price vs RAM"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-st.dataframe(
-    filtered_df.sort_values("Discount_Percentage", ascending=False).head(5),
-    use_container_width=True
-)
+    with col2:
+        st.subheader("Best Value Phones")
+        st.dataframe(
+            filtered_df.sort_values(
+                ["Memory_GB", "Selling Price"],
+                ascending=[False, True]
+            ).head(10),
+            use_container_width=True
+        )
+
+# ---------------- TAB 4 ----------------
+with tab4:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig = px.scatter(
+            filtered_df,
+            x="Selling Price",
+            y="Discount_Percentage",
+            color="Brand",
+            title="Price vs Discount"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        fig = px.histogram(
+            filtered_df,
+            x="Discount_Percentage",
+            nbins=20,
+            title="Discount Distribution"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
-st.caption("📊 Professional Dashboard • Built with Streamlit")
+st.caption("🚀 Portfolio-Level Dashboard • Built with Streamlit + Plotly")
